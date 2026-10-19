@@ -1,0 +1,37 @@
+// Project Forge — Bubble Sort in ForgeLang
+// Allocates an array on the ForgeOS heap, sorts it in ascending order, and prints elements.
+
+fn sort_array(ptr, len) {
+    for (let i = 0; i < len; i = i + 1) {
+        for (let j = 0; j < len - 1 - i; j = j + 1) {
+            let addr_a = ptr + j * 2
+            let addr_b = ptr + (j + 1) * 2
+            let val_a = peek(addr_a)
+            let val_b = peek(addr_b)
+            if val_a > val_b {
+                poke(addr_a, val_b)
+                poke(addr_b, val_a)
+            }
+        }
+    }
+    return 0
+}
+
+let len = 6
+let arr = alloc(12) // 6 words = 12 bytes
+
+// Populate initial values: 45, 12, 89, 7, 33, 21
+poke(arr + 0, 45)
+poke(arr + 2, 12)
+poke(arr + 4, 89)
+poke(arr + 6, 7)
+poke(arr + 8, 33)
+poke(arr + 10, 21)
+
+sort_array(arr, len)
+
+// Print sorted results: 7, 12, 21, 33, 45, 89
+for (let k = 0; k < len; k = k + 1) {
+    print peek(arr + k * 2)
+}
+

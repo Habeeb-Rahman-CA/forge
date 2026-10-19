@@ -1,0 +1,61 @@
+// Project Forge — Framebuffer Bouncing Ball Animation (bounce.fl)
+// Demonstrates 64x32 virtual graphics display, color palette, and physics loop.
+
+clear_screen(0) // clear to black
+
+// Draw border around the screen (64x32)
+for (let bx = 0; bx < 64; bx = bx + 1) {
+    draw_pixel(bx, 0, 8)  // top border (dark gray)
+    draw_pixel(bx, 31, 8) // bottom border
+}
+for (let by = 0; by < 32; by = by + 1) {
+    draw_pixel(0, by, 8)  // left border
+    draw_pixel(63, by, 8) // right border
+}
+
+// Initial physics parameters
+let x = 10
+let y = 8
+let vx = 1
+let vy = 1
+let color = 11 // Bright Cyan
+
+for (let step = 0; step < 120; step = step + 1) {
+    // Clear old ball position
+    draw_pixel(x, y, 0)
+
+    // Update position
+    x = x + vx
+    y = y + vy
+
+    // Bounce off horizontal walls
+    if x <= 1 {
+        x = 1
+        vx = 1
+        color = (color % 14) + 1
+    }
+    if x >= 62 {
+        x = 62
+        vx = 0 - 1
+        color = (color % 14) + 1
+    }
+
+    // Bounce off vertical walls
+    if y <= 1 {
+        y = 1
+        vy = 1
+        color = (color % 14) + 1
+    }
+    if y >= 30 {
+        y = 30
+        vy = 0 - 1
+        color = (color % 14) + 1
+    }
+
+    // Draw ball at new position
+    draw_pixel(x, y, color)
+}
+
+print x
+print y
+

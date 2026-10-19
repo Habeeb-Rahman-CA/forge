@@ -1,0 +1,1697 @@
+<div class="min-h-screen flex flex-col bg-[#0b0f17] text-slate-200 select-none">
+  <!-- ==================== TOP CONTROL TOOLBAR ==================== -->
+  <header class="border-b border-slate-800 bg-[#0f1522] px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center justify-center w-7 h-7 rounded bg-sky-500/15 border border-sky-500/40 text-sky-400 font-mono font-bold text-sm">
+          F16
+        </span>
+        <div>
+          <h1 class="text-sm font-semibold tracking-tight text-slate-100 leading-none">
+            FORGE-16 SYSTEMS LAB
+          </h1>
+          <p class="text-[11px] text-slate-400 font-mono mt-0.5">
+            16-Bit Educational CPU, Compiler &amp; Visual Debugger
+          </p>
+        </div>
+      </div>
+
+      <!-- Language Mode Selector -->
+      <div class="flex items-center rounded bg-slate-900 border border-slate-800 p-0.5 text-xs font-mono">
+        <button
+          type="button"
+          data-testid="mode-asm"
+          (click)="setLanguageMode('assembly')"
+          class="px-2 py-1 rounded transition cursor-pointer"
+          [class.bg-sky-600]="editorLanguage === 'assembly'"
+          [class.text-white]="editorLanguage === 'assembly'"
+          [class.text-slate-400]="editorLanguage !== 'assembly'"
+        >
+          ASM (.asm)
+        </button>
+        <button
+          type="button"
+          data-testid="mode-fl"
+          (click)="setLanguageMode('forgelang')"
+          class="px-2 py-1 rounded transition cursor-pointer"
+          [class.bg-purple-600]="editorLanguage === 'forgelang'"
+          [class.text-white]="editorLanguage === 'forgelang'"
+          [class.text-slate-400]="editorLanguage !== 'forgelang'"
+        >
+          ForgeLang (.fl)
+        </button>
+      </div>
+
+      <!-- Connection / Engine Badge -->
+      <span
+        class="px-2 py-0.5 text-[11px] font-mono rounded border"
+        [class.bg-emerald-950/60]="bridge.bridgeConnected"
+        [class.border-emerald-600/50]="bridge.bridgeConnected"
+        [class.text-emerald-300]="bridge.bridgeConnected"
+        [class.bg-amber-950/50]="!bridge.bridgeConnected"
+        [class.border-amber-600/40]="!bridge.bridgeConnected"
+        [class.text-amber-300]="!bridge.bridgeConnected"
+      >
+        {{ bridge.bridgeConnected ? '● Native C Bridge (127.0.0.1:8080)' : '● Local Forge-16 Engine' }}
+      </span>
+    </div>
+
+    <!-- Execution & Source-Level Debugging Controls -->
+    <div class="flex flex-wrap items-center gap-1.5">
+      <button
+        type="button"
+        data-testid="btn-assemble"
+        (click)="assembleProgram()"
+        class="px-2.5 py-1.5 rounded text-xs font-medium bg-sky-600 hover:bg-sky-500 text-white transition cursor-pointer"
+        title="Assemble Forge-16 Assembly"
+      >
+        Assemble
+      </button>
+
+      <button
+        type="button"
+        data-testid="btn-compile"
+        (click)="compileProgram()"
+        class="px-2.5 py-1.5 rounded text-xs font-medium bg-purple-600 hover:bg-purple-500 text-white transition cursor-pointer"
+        title="Compile High-Level ForgeLang (.fl)"
+      >
+        Compile .fl
+      </button>
+
+      <button
+        type="button"
+        data-testid="btn-run"
+        (click)="startRun()"
+        [disabled]="isRunningLoop"
+        class="px-3 py-1.5 rounded text-xs font-medium bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white transition cursor-pointer"
+      >
+        ▶ Run
+      </button>
+
+      <button
+        type="button"
+        data-testid="btn-pause"
+        (click)="pauseRun()"
+        [disabled]="!isRunningLoop"
+        class="px-2 py-1.5 rounded text-xs font-medium bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white transition cursor-pointer"
+      >
+        ⏸ Pause
+      </button>
+
+      <button
+        type="button"
+        data-testid="btn-resume"
+        (click)="resumeRun()"
+        [disabled]="!isPaused || isRunningLoop"
+        class="px-2 py-1.5 rounded text-xs font-medium bg-teal-600 hover:bg-teal-500 disabled:opacity-40 text-white transition cursor-pointer"
+      >
+        ⏵ Resume
+      </button>
+
+      <button
+        type="button"
+        data-testid="btn-step"
+        (click)="stepInstruction()"
+        [disabled]="isRunningLoop || (state?.halted ?? false)"
+        class="px-2.5 py-1.5 rounded text-xs font-medium bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white transition cursor-pointer"
+        title="Step 1 CPU Instruction"
+      >
+        ↷ Step
+      </button>
+
+      <button
+        type="button"
+        data-testid="btn-step-line"
+        (click)="stepSourceLine()"
+        [disabled]="isRunningLoop || (state?.halted ?? false)"
+        class="px-2.5 py-1.5 rounded text-xs font-medium bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white transition cursor-pointer"
+        title="Step 1 High-Level Source Statement"
+      >
+        ⇣ Step Line
+      </button>
+
+      <button
+        type="button"
+        data-testid="btn-step-over"
+        (click)="stepOverCall()"
+        [disabled]="isRunningLoop || (state?.halted ?? false)"
+        class="px-2 py-1.5 rounded text-xs font-medium bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-100 transition cursor-pointer"
+        title="Step Over Function Call"
+      >
+        ⤵ Over
+      </button>
+
+      <button
+        type="button"
+        data-testid="btn-step-out"
+        (click)="stepOutOfFunction()"
+        [disabled]="isRunningLoop || (state?.halted ?? false)"
+        class="px-2 py-1.5 rounded text-xs font-medium bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-100 transition cursor-pointer"
+        title="Step Out of Current Function"
+      >
+        ⤴ Out
+      </button>
+
+      <button
+        type="button"
+        data-testid="btn-reset"
+        (click)="resetCpu()"
+        class="px-2 py-1.5 rounded text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-100 transition cursor-pointer"
+      >
+        ↺ Reset
+      </button>
+
+      <button
+        type="button"
+        data-testid="btn-stop"
+        (click)="stopExecution()"
+        class="px-2 py-1.5 rounded text-xs font-medium bg-rose-700 hover:bg-rose-600 text-white transition cursor-pointer"
+      >
+        ■ Stop
+      </button>
+
+      <!-- Speed Control -->
+      <div class="flex items-center gap-1.5 ml-1 px-2 py-1 rounded bg-slate-900 border border-slate-800 text-xs">
+        <span class="text-slate-400 font-mono">Speed:</span>
+        <input
+          type="range"
+          min="1"
+          max="50"
+          [(ngModel)]="stepsPerSecond"
+          (ngModelChange)="onSpeedChange()"
+          class="w-16 accent-sky-500 cursor-pointer"
+          aria-label="Execution Speed"
+        />
+        <span class="font-mono text-sky-300 w-12 text-right">
+          {{ stepsPerSecond >= 50 ? 'MAX' : stepsPerSecond + ' Hz' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Examples & Import/Export -->
+    <div class="flex items-center gap-2">
+      <select
+        aria-label="Example Program Selector"
+        [(ngModel)]="selectedExampleId"
+        (ngModelChange)="loadSelectedExample()"
+        class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-2.5 py-1.5 font-mono focus:outline-none focus:border-sky-500"
+      >
+        <optgroup label="Forge-16 Assembly (.asm)">
+          @for (ex of asmExamples; track ex.id) {
+            <option [value]="ex.id">{{ ex.title }}</option>
+          }
+        </optgroup>
+        <optgroup label="ForgeLang High-Level (.fl)">
+          @for (ex of flExamples; track ex.id) {
+            <option [value]="ex.id">{{ ex.title }}</option>
+          }
+        </optgroup>
+      </select>
+
+      <button
+        type="button"
+        (click)="exportAssemblyFile()"
+        class="px-2.5 py-1.5 rounded text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition cursor-pointer"
+        title="Export source file"
+      >
+        Export
+      </button>
+
+      <label
+        class="px-2.5 py-1.5 rounded text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition cursor-pointer"
+        title="Import .fl or .asm file"
+      >
+        Import
+        <input type="file" accept=".fl,.asm,.fasm,.txt" class="hidden" (change)="onImportAssemblyFile($event)" />
+      </label>
+
+      <!-- Interactive Learning Feature Buttons -->
+      <button
+        type="button"
+        data-testid="btn-tutorials"
+        (click)="showTutorialsModal = true"
+        class="px-2.5 py-1.5 rounded text-xs bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-medium transition cursor-pointer flex items-center gap-1"
+        title="Open Interactive Tutorials & Guided Exercises"
+      >
+        <span>📚</span>
+        <span class="hidden sm:inline">Tutorials</span>
+      </button>
+
+      <button
+        type="button"
+        data-testid="btn-diagram"
+        (click)="showDiagramModal = true"
+        class="px-2.5 py-1.5 rounded text-xs bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-sky-300 font-medium transition cursor-pointer flex items-center gap-1"
+        title="View CPU Architecture Block Diagram"
+      >
+        <span>📐</span>
+        <span class="hidden sm:inline">Architecture</span>
+      </button>
+
+      <button
+        type="button"
+        data-testid="btn-isa"
+        (click)="showIsaModal = true"
+        class="px-2.5 py-1.5 rounded text-xs bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/40 text-indigo-300 font-medium transition cursor-pointer flex items-center gap-1"
+        title="Instruction Set Architecture Reference"
+      >
+        <span>📋</span>
+        <span class="hidden sm:inline">ISA</span>
+      </button>
+
+      <button
+        type="button"
+        data-testid="btn-profiler"
+        (click)="showProfilerModal = true"
+        class="px-2.5 py-1.5 rounded text-xs bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-medium transition cursor-pointer flex items-center gap-1"
+        title="Microarchitecture & Performance Profiler"
+      >
+        <span>⚡</span>
+        <span class="hidden sm:inline">Profiler</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Status Banner -->
+  <div class="bg-[#090d14] border-b border-slate-800/80 px-4 py-1.5 flex items-center justify-between text-xs font-mono">
+    <div class="flex items-center gap-2">
+      <span class="text-slate-400">STATUS:</span>
+      <span
+        data-testid="status-banner"
+        [class.text-emerald-400]="(state?.errorCode ?? 0) === 0"
+        [class.text-rose-400]="(state?.errorCode ?? 0) !== 0 && state?.errorCode !== 10"
+        [class.text-amber-300]="state?.errorCode === 10 || isPaused"
+      >
+        {{ statusBanner }}
+      </span>
+    </div>
+    <div class="flex items-center gap-4 text-slate-400">
+      @if ((state?.callStack?.length ?? 0) > 0) {
+        <span>
+          CALL DEPTH:
+          <span class="text-purple-300 font-semibold">{{ state?.callStack?.length }}</span>
+        </span>
+      }
+      @if (currentInstruction) {
+        <div>
+          NEXT AT <span class="text-sky-400">{{ hex16(state?.pc ?? 0) }}</span>:
+          <span class="text-emerald-300 font-semibold ml-1">{{ currentInstruction.text }}</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- ==================== MAIN WORKSPACE GRID ==================== -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-2 p-2 overflow-hidden">
+    <!-- COLUMN 1: SOURCE EDITOR (.fl OR .asm) (4 cols) -->
+    <section class="lg:col-span-4 flex flex-col bg-[#0f1522] border border-slate-800 rounded overflow-hidden min-h-[420px]">
+      <div class="px-3 py-2 bg-[#131b2e] border-b border-slate-800 flex items-center justify-between">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-300">
+          {{ editorLanguage === 'forgelang' ? 'ForgeLang Source Editor (.fl)' : 'Assembly Source Editor (.asm)' }}
+        </span>
+        <span class="text-[11px] font-mono text-slate-400">
+          {{ activeSourceLine ? 'Active Line: ' + activeSourceLine : 'Click gutter to set breakpoint' }}
+        </span>
+      </div>
+
+      <div class="flex-1 min-h-[340px]">
+        <app-monaco-editor
+          [code]="sourceCode"
+          [language]="editorLanguage"
+          [activeLine]="activeSourceLine"
+          [breakpointLines]="breakpointSourceLines"
+          [diagnostics]="state?.diagnostics ?? []"
+          (codeChange)="sourceCode = $event"
+          (toggleLineBreakpoint)="toggleSourceLineBreakpoint($event)"
+        ></app-monaco-editor>
+      </div>
+
+      @if (state && state.diagnostics.length > 0) {
+        <div class="bg-rose-950/70 border-t border-rose-700/60 p-2.5 max-h-28 overflow-auto font-mono text-xs text-rose-200">
+          @for (d of state.diagnostics; track $index) {
+            <div>[{{ d.stage || 'error' }}] Line {{ d.line }}: {{ d.message }}</div>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- COLUMN 2: CPU REGISTERS + EXECUTION / GENERATED ASM / AST (4 cols) -->
+    <section class="lg:col-span-4 flex flex-col gap-2 min-h-[420px]">
+      <!-- CPU Panel: Registers, PC, SP, Flags -->
+      <div class="bg-[#0f1522] border border-slate-800 rounded p-3">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-300">
+            CPU Registers &amp; Status Flags
+          </span>
+          <div class="flex items-center gap-2 font-mono text-xs">
+            <span class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-sky-300" data-testid="cpu-pc">
+              PC: {{ hex16(state?.pc ?? 0) }}
+            </span>
+            <span class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-purple-300" data-testid="cpu-sp">
+              SP: {{ hex16(state?.sp ?? 0) }}
+            </span>
+            <span class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
+              CYC: {{ state?.cycles ?? 0 }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Status Flags Bar -->
+        <div class="grid grid-cols-4 gap-1.5 mb-2.5 font-mono text-xs">
+          <div
+            class="px-2 py-1 rounded border text-center"
+            [class.bg-emerald-500/20]="state?.flagZ"
+            [class.border-emerald-500/60]="state?.flagZ"
+            [class.text-emerald-300]="state?.flagZ"
+            [class.bg-slate-900]="!state?.flagZ"
+            [class.border-slate-800]="!state?.flagZ"
+            [class.text-slate-500]="!state?.flagZ"
+          >
+            Z (Zero): {{ state?.flagZ ? 1 : 0 }}
+          </div>
+          <div
+            class="px-2 py-1 rounded border text-center"
+            [class.bg-emerald-500/20]="state?.flagN"
+            [class.border-emerald-500/60]="state?.flagN"
+            [class.text-emerald-300]="state?.flagN"
+            [class.bg-slate-900]="!state?.flagN"
+            [class.border-slate-800]="!state?.flagN"
+            [class.text-slate-500]="!state?.flagN"
+          >
+            N (Neg): {{ state?.flagN ? 1 : 0 }}
+          </div>
+          <div
+            class="px-2 py-1 rounded border text-center"
+            [class.bg-emerald-500/20]="state?.flagC"
+            [class.border-emerald-500/60]="state?.flagC"
+            [class.text-emerald-300]="state?.flagC"
+            [class.bg-slate-900]="!state?.flagC"
+            [class.border-slate-800]="!state?.flagC"
+            [class.text-slate-500]="!state?.flagC"
+          >
+            C (Carry): {{ state?.flagC ? 1 : 0 }}
+          </div>
+          <div
+            class="px-2 py-1 rounded border text-center"
+            [class.bg-emerald-500/20]="state?.flagV"
+            [class.border-emerald-500/60]="state?.flagV"
+            [class.text-emerald-300]="state?.flagV"
+            [class.bg-slate-900]="!state?.flagV"
+            [class.border-slate-800]="!state?.flagV"
+            [class.text-slate-500]="!state?.flagV"
+          >
+            V (Ovfl): {{ state?.flagV ? 1 : 0 }}
+          </div>
+        </div>
+
+        <!-- 8 General Purpose Registers Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 font-mono text-xs">
+          @for (val of (state?.registers ?? [0,0,0,0,0,0,0,0]); track $index) {
+            <div
+              [attr.data-testid]="'reg-R' + $index"
+              class="p-2 rounded border transition"
+              [class.bg-emerald-950/50]="regChanged($index)"
+              [class.border-emerald-500/60]="regChanged($index)"
+              [class.bg-slate-900/90]="!regChanged($index)"
+              [class.border-slate-800]="!regChanged($index)"
+            >
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="font-bold text-sky-400">
+                  R{{ $index }}{{ $index === 7 ? ' (FP)' : '' }}
+                </span>
+                @if (regChanged($index)) {
+                  <span class="text-[10px] text-emerald-400">Δ</span>
+                }
+              </div>
+              <div class="text-sm font-semibold text-slate-100 mt-0.5">
+                {{ hex16(val) }}
+              </div>
+              <div class="text-[10px] text-slate-400">
+                u:{{ val }} | s:{{ toSigned16(val) }}
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Live Visual ALU Operation Inspector -->
+        <div class="mt-2.5 pt-2 border-t border-slate-800/80 font-mono text-xs">
+          <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+            <span class="font-semibold text-slate-300">ALU Operation Breakdown</span>
+            @if (aluOperationInspection) {
+              <span class="text-amber-300 font-bold px-1.5 py-0.5 rounded bg-amber-950/60 border border-amber-600/40">
+                ALU: {{ aluOperationInspection.opName }}
+              </span>
+            } @else {
+              <span class="text-slate-500 text-[10px]">Non-ALU Instruction</span>
+            }
+          </div>
+          @if (aluOperationInspection) {
+            <div class="p-2 rounded bg-slate-900 border border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+              <div>
+                <span class="text-slate-500 block text-[10px]">Operand A:</span>
+                <span class="text-sky-300 font-semibold">{{ aluOperationInspection.rdName }}</span> = {{ aluOperationInspection.opAHex }}
+                <span class="text-slate-500">({{ aluOperationInspection.opASigned }})</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block text-[10px]">Operand B:</span>
+                <span class="text-teal-300 font-semibold">{{ aluOperationInspection.rsOrImmName }}</span> = {{ aluOperationInspection.opBHex }}
+                <span class="text-slate-500">({{ aluOperationInspection.opBSigned }})</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block text-[10px]">ALU Result:</span>
+                <span class="text-emerald-400 font-bold">{{ aluOperationInspection.resultHex }}</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block text-[10px]">Flags State:</span>
+                <span class="text-purple-300">Z:{{ aluOperationInspection.currentFlags.z ? 1 : 0 }} N:{{ aluOperationInspection.currentFlags.n ? 1 : 0 }} C:{{ aluOperationInspection.currentFlags.c ? 1 : 0 }} V:{{ aluOperationInspection.currentFlags.v ? 1 : 0 }}</span>
+              </div>
+            </div>
+          } @else {
+            <div class="px-2 py-1.5 rounded bg-slate-900/60 border border-slate-800/80 text-[10px] text-slate-500">
+              Active instruction: {{ currentInstruction?.text || 'IDLE' }}
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Execution Panel: Disassembly / Generated ASM / AST / Decoder Tabs -->
+      <div class="flex-1 flex flex-col bg-[#0f1522] border border-slate-800 rounded overflow-hidden min-h-[220px]">
+        <div class="px-3 py-1.5 bg-[#131b2e] border-b border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-1.5 font-mono text-xs">
+            <button
+              type="button"
+              (click)="activeExecTab = 'disassembly'"
+              class="px-2 py-0.5 rounded cursor-pointer transition"
+              [class.bg-sky-500/20]="activeExecTab === 'disassembly'"
+              [class.text-sky-300]="activeExecTab === 'disassembly'"
+              [class.text-slate-400]="activeExecTab !== 'disassembly'"
+            >
+              Disassembly
+            </button>
+            <button
+              type="button"
+              (click)="activeExecTab = 'decoder'"
+              class="px-2 py-0.5 rounded cursor-pointer transition"
+              [class.bg-amber-500/20]="activeExecTab === 'decoder'"
+              [class.text-amber-300]="activeExecTab === 'decoder'"
+              [class.text-slate-400]="activeExecTab !== 'decoder'"
+              title="Machine Code 32-bit Instruction Decoder"
+            >
+              Decoder
+            </button>
+            @if (editorLanguage === 'forgelang') {
+              <button
+                type="button"
+                (click)="activeExecTab = 'generated-asm'"
+                class="px-2 py-0.5 rounded cursor-pointer transition"
+                [class.bg-purple-500/20]="activeExecTab === 'generated-asm'"
+                [class.text-purple-300]="activeExecTab === 'generated-asm'"
+                [class.text-slate-400]="activeExecTab !== 'generated-asm'"
+              >
+                Generated ASM
+              </button>
+              <button
+                type="button"
+                (click)="activeExecTab = 'ast'"
+                class="px-2 py-0.5 rounded cursor-pointer transition"
+                [class.bg-purple-500/20]="activeExecTab === 'ast'"
+                [class.text-purple-300]="activeExecTab === 'ast'"
+                [class.text-slate-400]="activeExecTab !== 'ast'"
+              >
+                AST
+              </button>
+            }
+          </div>
+          <span class="text-[11px] font-mono text-slate-400">
+            Click ● to toggle breakpoint
+          </span>
+        </div>
+
+        @if (activeExecTab === 'disassembly') {
+          <div class="flex-1 overflow-auto font-mono text-xs divide-y divide-slate-800/50">
+            @for (ins of (state?.disassembly ?? []); track ins.address) {
+              <div
+                class="px-2.5 py-1.5 flex items-center gap-2 hover:bg-slate-800/40 cursor-pointer"
+                [class.bg-emerald-500/20]="ins.address === state?.pc"
+                [class.bg-purple-500/10]="ins.address !== state?.pc && editorLanguage === 'forgelang' && ins.sourceLine === activeSourceLine"
+                [class.border-l-2]="ins.address === state?.pc"
+                [class.border-emerald-400]="ins.address === state?.pc"
+                (click)="toggleBreakpoint(ins.address)"
+              >
+                <span
+                  class="w-4 text-center"
+                  [class.text-rose-500]="hasBreakpoint(ins.address)"
+                  [class.text-slate-700]="!hasBreakpoint(ins.address)"
+                >
+                  ●
+                </span>
+                <span class="w-4 text-emerald-400 font-bold">
+                  {{ ins.address === state?.pc ? '▶' : '' }}
+                </span>
+                <span class="text-sky-400 w-14">{{ hex16(ins.address) }}</span>
+                <span class="text-slate-500 w-20">
+                  {{ hex16(ins.word0).slice(2) }} {{ hex16(ins.word1).slice(2) }}
+                </span>
+                <span class="text-slate-100 flex-1 font-medium">{{ ins.text }}</span>
+                @if (editorLanguage === 'forgelang' && ins.sourceLine) {
+                  <span class="px-1 py-0.2 rounded bg-purple-950/70 border border-purple-700/40 text-[10px] text-purple-300">
+                    .fl:{{ ins.sourceLine }}
+                  </span>
+                }
+                <span class="text-[10px] text-slate-500">L{{ ins.line }}</span>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeExecTab === 'generated-asm') {
+          <div class="flex-1 overflow-auto font-mono text-xs divide-y divide-slate-800/40">
+            @for (gl of generatedAsmLines; track gl.lineNum) {
+              <div
+                class="px-2.5 py-1 flex items-center gap-3"
+                [class.bg-emerald-500/20]="gl.isActive"
+                [class.text-emerald-200]="gl.isActive"
+              >
+                <span class="w-8 text-right text-slate-500">{{ gl.lineNum }}</span>
+                <span class="flex-1 whitespace-pre">{{ gl.text }}</span>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeExecTab === 'ast') {
+          <pre class="flex-1 overflow-auto p-3 font-mono text-xs text-purple-200 leading-5">{{ state?.astText || '; Compile a ForgeLang (.fl) program to inspect its AST.' }}</pre>
+        }
+
+        @if (activeExecTab === 'decoder') {
+          <div class="flex-1 overflow-auto p-3 font-mono text-xs space-y-3">
+            @if (activeInstructionBreakdown; as dec) {
+              <div class="p-2.5 rounded bg-slate-900 border border-slate-800 space-y-2">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                  <span class="text-slate-400">Current Instruction (PC={{ hex16(dec.address) }}):</span>
+                  <span class="text-emerald-300 font-bold text-sm">{{ dec.text }}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-[11px]">
+                  <div>
+                    <span class="text-slate-500 block">Machine Code (32-bit):</span>
+                    <span class="text-sky-300 font-bold text-sm">{{ dec.fullHex }}</span>
+                  </div>
+                  <div>
+                    <span class="text-slate-500 block">Binary Bitstream:</span>
+                    <span class="text-slate-300 font-mono text-[10px]">{{ dec.binW0 }} {{ dec.binW1 }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Bitfield Breakdown Cards -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                  <span class="text-slate-500 block text-[10px]">Opcode (15..10)</span>
+                  <span class="text-amber-300 font-bold text-sm">{{ dec.opcode }}</span>
+                  <span class="text-slate-400 block font-mono text-[10px]">bin: {{ dec.opcodeBin }}</span>
+                </div>
+                <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                  <span class="text-slate-500 block text-[10px]">Mode (9..8)</span>
+                  <span class="text-cyan-300 font-bold text-sm">{{ dec.modeName }}</span>
+                  <span class="text-slate-400 block font-mono text-[10px]">bin: {{ dec.modeBin }}</span>
+                </div>
+                <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                  <span class="text-slate-500 block text-[10px]">Rd (7..5)</span>
+                  <span class="text-sky-300 font-bold text-sm">{{ dec.rdName }}</span>
+                  <span class="text-slate-400 block font-mono text-[10px]">bin: {{ dec.rdBin }}</span>
+                </div>
+                <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                  <span class="text-slate-500 block text-[10px]">Rs (4..2)</span>
+                  <span class="text-purple-300 font-bold text-sm">{{ dec.rsName }}</span>
+                  <span class="text-slate-400 block font-mono text-[10px]">bin: {{ dec.rsBin }}</span>
+                </div>
+              </div>
+
+              <div class="p-2.5 rounded bg-slate-900 border border-slate-800 flex items-center justify-between text-[11px]">
+                <span class="text-slate-400">Word 1 Immediate / Displacement (IMM16):</span>
+                <span class="text-emerald-300 font-mono font-bold">{{ dec.immHex }} (signed: {{ dec.immSigned }})</span>
+              </div>
+            } @else {
+              <div class="text-slate-500 p-4 text-center">No active instruction loaded.</div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- COLUMN 3: MEMORY HEX/ASCII VIEWER, EDITOR, WATCHES & STACK (4 cols) -->
+    <section class="lg:col-span-4 flex flex-col gap-2 min-h-[420px]">
+      <!-- Hex + ASCII Memory Viewer -->
+      <div class="flex-1 flex flex-col bg-[#0f1522] border border-slate-800 rounded overflow-hidden">
+        <div class="px-3 py-2 bg-[#131b2e] border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-300">
+            Memory Inspector (Hex &amp; ASCII)
+          </span>
+          <div class="flex items-center gap-1 text-[11px] font-mono">
+            <button
+              type="button"
+              (click)="jumpToMemoryRegion(1024)"
+              class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-sky-300 cursor-pointer"
+            >
+              Code
+            </button>
+            <button
+              type="button"
+              (click)="jumpToMemoryRegion(32768)"
+              class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 cursor-pointer"
+            >
+              RAM
+            </button>
+            <button
+              type="button"
+              (click)="jumpToMemoryRegion(36864)"
+              class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-amber-300 cursor-pointer"
+              title="Jump to ForgeOS Dynamic Heap (0x9000)"
+            >
+              Heap
+            </button>
+            <button
+              type="button"
+              (click)="jumpToMemoryRegion(56960)"
+              class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-pink-300 cursor-pointer"
+              title="Jump to FP Activation Frames (0xDE80..0xDF00)"
+            >
+              Frames
+            </button>
+            <button
+              type="button"
+              (click)="jumpToMemoryRegion(61184)"
+              class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-purple-300 cursor-pointer"
+            >
+              Stack
+            </button>
+            <button
+              type="button"
+              (click)="jumpToMemoryRegion(61440)"
+              class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 cursor-pointer"
+              title="Jump to 64x32 Framebuffer VRAM (0xF000)"
+            >
+              VRAM
+            </button>
+          </div>
+        </div>
+
+        <!-- Custom Address & Memory Poke Editor Bar -->
+        <div class="p-2 bg-[#0b101b] border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+          <div class="flex items-center gap-1">
+            <span class="text-slate-400">View:</span>
+            <input
+              type="text"
+              [(ngModel)]="memAddressInput"
+              (keyup.enter)="applyCustomMemoryAddress()"
+              class="w-20 px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-200"
+              aria-label="Memory View Start Address"
+            />
+            <button
+              type="button"
+              (click)="applyCustomMemoryAddress()"
+              class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer"
+            >
+              Go
+            </button>
+          </div>
+
+          <div class="flex items-center gap-1">
+            <span class="text-slate-400">Poke:</span>
+            <input
+              type="text"
+              [(ngModel)]="editMemAddrInput"
+              class="w-16 px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-200"
+              placeholder="Addr"
+              aria-label="Poke Memory Address"
+            />
+            <input
+              type="text"
+              [(ngModel)]="editMemValInput"
+              class="w-16 px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-200"
+              placeholder="Val"
+              aria-label="Poke Memory Value"
+            />
+            <select
+              [(ngModel)]="editMemWidth"
+              class="px-1 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-200"
+              aria-label="Poke Width"
+            >
+              <option [ngValue]="8">8b</option>
+              <option [ngValue]="16">16b</option>
+            </select>
+            <button
+              type="button"
+              data-testid="btn-mem-write"
+              (click)="writeMemoryValue()"
+              class="px-2 py-0.5 rounded bg-sky-700 hover:bg-sky-600 text-white cursor-pointer"
+            >
+              Write
+            </button>
+          </div>
+        </div>
+
+        <!-- Hex + ASCII Rows -->
+        <div class="flex-1 overflow-auto p-2 font-mono text-[11px] leading-5">
+          @for (row of memoryRows; track row.baseAddress) {
+            <div class="flex items-center gap-2 hover:bg-slate-900/60 px-1 rounded">
+              <span class="text-sky-400 w-14">{{ hex16(row.baseAddress) }}:</span>
+              <div class="flex items-center gap-1 flex-1">
+                @for (b of row.bytes; track b.addr) {
+                  <span
+                    (click)="selectByteForEdit(b.addr, b.val)"
+                    class="px-0.5 rounded cursor-pointer"
+                    [class.bg-emerald-500/30]="b.isWrite"
+                    [class.text-emerald-200]="b.isWrite"
+                    [class.bg-sky-500/30]="b.isRead && !b.isWrite"
+                    [class.text-slate-200]="b.val !== 0 && !b.isWrite"
+                    [class.text-slate-600]="b.val === 0 && !b.isWrite"
+                    [title]="'Click to edit ' + hex16(b.addr)"
+                  >
+                    {{ hex8(b.val) }}
+                  </span>
+                }
+              </div>
+              <span class="text-slate-400 border-l border-slate-800 pl-2 tracking-widest">
+                {{ row.ascii }}
+              </span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Watches & Stack Split Subpanel -->
+      <div class="grid grid-cols-2 gap-2">
+        <!-- Memory Watches -->
+        <div class="bg-[#0f1522] border border-slate-800 rounded p-2.5 font-mono text-xs">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[11px] font-semibold uppercase text-slate-300">Memory Watches</span>
+            <div class="flex items-center gap-1">
+              <input
+                type="text"
+                [(ngModel)]="watchAddrInput"
+                class="w-16 px-1 py-0.5 text-[11px] rounded bg-slate-900 border border-slate-700"
+                aria-label="Watch Address Input"
+              />
+              <button
+                type="button"
+                (click)="addWatchAddress()"
+                class="px-1.5 py-0.5 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-sky-300 cursor-pointer"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div class="space-y-1 max-h-24 overflow-auto">
+            @for (w of (state?.watches ?? []); track w.address) {
+              <div class="flex items-center justify-between bg-slate-900/80 px-2 py-1 rounded border border-slate-800/80 text-[11px]">
+                <span class="text-sky-400">[{{ hex16(w.address) }}]</span>
+                <span class="text-slate-200">{{ hex16(w.value16) }} ({{ w.value16 }})</span>
+                <button
+                  type="button"
+                  (click)="removeWatchAddress(w.address)"
+                  class="text-slate-500 hover:text-rose-400 cursor-pointer"
+                >
+                  ×
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Hardware Stack Viewer -->
+        <div class="bg-[#0f1522] border border-slate-800 rounded p-2.5 font-mono text-xs">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[11px] font-semibold uppercase text-slate-300">
+              Stack (SP={{ hex16(state?.sp ?? 61440) }})
+            </span>
+          </div>
+          <div class="space-y-1 max-h-24 overflow-auto">
+            @if ((state?.stack?.length ?? 0) === 0) {
+              <div class="text-[11px] text-slate-500 italic py-2 text-center">
+                Stack empty (SP = 0xF000)
+              </div>
+            }
+            @for (st of (state?.stack ?? []); track st.address) {
+              <div class="flex items-center justify-between bg-slate-900/80 px-2 py-1 rounded border border-slate-800/80 text-[11px]">
+                <span class="text-purple-300">{{ hex16(st.address) }}</span>
+                <span class="text-slate-100 font-semibold">{{ hex16(st.value) }} ({{ st.value }})</span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ==================== BOTTOM PANEL: CONSOLE, DISPLAY & FORGEOS, VARIABLES, TRACE, SYMBOLS ==================== -->
+  <footer class="h-56 border-t border-slate-800 bg-[#0f1522] flex flex-col">
+    <div class="px-4 py-1.5 bg-[#131b2e] border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2 text-xs font-mono">
+        <button
+          type="button"
+          (click)="activeBottomTab = 'console'"
+          class="px-2.5 py-1 rounded cursor-pointer transition"
+          [class.bg-sky-500/20]="activeBottomTab === 'console'"
+          [class.text-sky-300]="activeBottomTab === 'console'"
+          [class.text-slate-400]="activeBottomTab !== 'console'"
+        >
+          Console &amp; Output
+        </button>
+        <button
+          type="button"
+          data-testid="tab-display"
+          (click)="activeBottomTab = 'display'"
+          class="px-2.5 py-1 rounded cursor-pointer transition"
+          [class.bg-cyan-500/20]="activeBottomTab === 'display'"
+          [class.text-cyan-300]="activeBottomTab === 'display'"
+          [class.text-slate-400]="activeBottomTab !== 'display'"
+        >
+          Display &amp; ForgeOS ({{ activePixels.length }} px)
+        </button>
+        <button
+          type="button"
+          data-testid="tab-variables"
+          (click)="activeBottomTab = 'variables'"
+          class="px-2.5 py-1 rounded cursor-pointer transition"
+          [class.bg-purple-500/20]="activeBottomTab === 'variables'"
+          [class.text-purple-300]="activeBottomTab === 'variables'"
+          [class.text-slate-400]="activeBottomTab !== 'variables'"
+        >
+          Variables &amp; Call Stack ({{ (state?.callStack?.length ?? 0) }})
+        </button>
+        <button
+          type="button"
+          (click)="activeBottomTab = 'trace'"
+          class="px-2.5 py-1 rounded cursor-pointer transition"
+          [class.bg-sky-500/20]="activeBottomTab === 'trace'"
+          [class.text-sky-300]="activeBottomTab === 'trace'"
+          [class.text-slate-400]="activeBottomTab !== 'trace'"
+        >
+          Execution Trace ({{ state?.trace?.length ?? 0 }})
+        </button>
+        <button
+          type="button"
+          data-testid="tab-microarch"
+          (click)="activeBottomTab = 'microarch'"
+          class="px-2.5 py-1 rounded cursor-pointer transition"
+          [class.bg-emerald-500/20]="activeBottomTab === 'microarch'"
+          [class.text-emerald-300]="activeBottomTab === 'microarch'"
+          [class.text-slate-400]="activeBottomTab !== 'microarch'"
+        >
+          Microarch &amp; Profiler
+        </button>
+        <button
+          type="button"
+          (click)="activeBottomTab = 'symbols'"
+          class="px-2.5 py-1 rounded cursor-pointer transition"
+          [class.bg-sky-500/20]="activeBottomTab === 'symbols'"
+          [class.text-sky-300]="activeBottomTab === 'symbols'"
+          [class.text-slate-400]="activeBottomTab !== 'symbols'"
+        >
+          Symbol Table ({{ state?.symbols?.length ?? 0 }})
+        </button>
+      </div>
+
+      <!-- Interactive Console & Keyboard Input Queue -->
+      <div class="flex items-center gap-1.5 text-xs font-mono">
+        <div class="hidden sm:flex items-center gap-1 mr-1">
+          <span class="text-slate-400 text-[11px]">Keys:</span>
+          <button type="button" (click)="sendQuickKey('w')" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">W</button>
+          <button type="button" (click)="sendQuickKey('a')" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">A</button>
+          <button type="button" (click)="sendQuickKey('s')" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">S</button>
+          <button type="button" (click)="sendQuickKey('d')" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">D</button>
+          <button type="button" (click)="sendQuickKey(32)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">SPC</button>
+        </div>
+        <span class="text-slate-400">IN Queue ({{ state?.os?.inputQueueCount ?? 0 }}):</span>
+        <input
+          type="text"
+          [(ngModel)]="consoleInputText"
+          (keyup.enter)="submitConsoleInput()"
+          placeholder="Send input to IN port..."
+          class="w-40 px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-200"
+          aria-label="Console Input Text"
+        />
+        <button
+          type="button"
+          (click)="submitConsoleInput()"
+          class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer"
+        >
+          Send
+        </button>
+      </div>
+    </div>
+
+    <div class="flex-1 overflow-auto p-3 font-mono text-xs">
+      @if (activeBottomTab === 'console') {
+        <div class="flex flex-col gap-2">
+          @if ((state?.numericOutputs?.length ?? 0) > 0) {
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-slate-400 text-[11px]">OUT Port 1 Values:</span>
+              @for (num of (state?.numericOutputs ?? []); track $index) {
+                <span
+                  data-testid="numeric-output-item"
+                  class="px-2 py-0.5 rounded bg-emerald-950/70 border border-emerald-600/50 text-emerald-300 font-semibold"
+                >
+                  {{ num }}
+                </span>
+              }
+            </div>
+          }
+          <pre
+            data-testid="console-output"
+            class="text-slate-200 whitespace-pre-wrap leading-5"
+          >{{ state?.console || '; Console output empty. Click Run or Step to execute instructions.' }}</pre>
+        </div>
+      }
+
+      @if (activeBottomTab === 'display') {
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+          <!-- 64x32 Virtual Framebuffer Screen -->
+          <div class="md:col-span-5 flex flex-col gap-1">
+            <div class="flex items-center justify-between text-[11px] text-slate-400">
+              <span>64×32 Pixel Framebuffer (VRAM 0xF000–0xF7FF)</span>
+              <span class="text-cyan-300">Writes: {{ state?.framebuffer?.fbWrites ?? 0 }}</span>
+            </div>
+            <div class="w-full max-w-[320px] aspect-[2/1] bg-[#0b0f17] border border-cyan-500/40 rounded overflow-hidden shadow-inner">
+              <svg
+                data-testid="framebuffer-svg"
+                viewBox="0 0 64 32"
+                class="w-full h-full block"
+                shape-rendering="crispEdges"
+              >
+                <rect x="0" y="0" width="64" height="32" fill="#0b0f17" />
+                @for (px of activePixels; track $index) {
+                  <rect
+                    [attr.x]="px.x"
+                    [attr.y]="px.y"
+                    width="1"
+                    height="1"
+                    [attr.fill]="px.colorHex"
+                  />
+                }
+              </svg>
+            </div>
+          </div>
+
+          <!-- ForgeOS Supervisor & Dynamic Heap Inspector -->
+          <div class="md:col-span-7 flex flex-col gap-2">
+            <div class="text-[11px] font-semibold uppercase text-slate-400">
+              ForgeOS Mini Operating Environment &amp; Dynamic Heap (0x9000–0xDFFF)
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <div class="text-slate-400">Heap Break (sbrk)</div>
+                <div class="text-amber-300 font-bold text-sm mt-0.5" data-testid="os-heap-brk">
+                  {{ hex16(state?.os?.heapBrk ?? 36864) }}
+                </div>
+                <div class="text-[10px] text-slate-500">Base: 0x9000 | Limit: 0xE000</div>
+              </div>
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <div class="text-slate-400">Heap Allocated</div>
+                <div class="text-emerald-300 font-bold text-sm mt-0.5" data-testid="os-heap-used">
+                  {{ state?.os?.heapUsedBytes ?? 0 }} B
+                </div>
+                <div class="text-[10px] text-slate-500">Allocs: {{ state?.os?.allocCount ?? 0 }}</div>
+              </div>
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <div class="text-slate-400">System Calls (Port 3)</div>
+                <div class="text-sky-300 font-bold text-sm mt-0.5" data-testid="os-syscall-count">
+                  {{ state?.os?.syscallCount ?? 0 }}
+                </div>
+                <div class="text-[10px] text-slate-500">
+                  Last SYS: #{{ state?.os?.lastSyscall ?? 0 }} | Exit: {{ state?.os?.exitCode ?? 0 }}
+                </div>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-400 leading-4">
+              Built-in ForgeLang OS Intrinsics:
+              <span class="text-purple-300">alloc(bytes)</span>,
+              <span class="text-purple-300">free_all()</span>,
+              <span class="text-purple-300">peek(addr)</span>,
+              <span class="text-purple-300">poke(addr, val)</span>,
+              <span class="text-cyan-300">clear_screen(col)</span>,
+              <span class="text-cyan-300">draw_pixel(x, y, col)</span>,
+              <span class="text-cyan-300">get_pixel(x, y)</span>,
+              <span class="text-emerald-300">key_ready()</span>,
+              <span class="text-emerald-300">read_key()</span>,
+              <span class="text-amber-300">cycles()</span>,
+              <span class="text-amber-300">rand()</span>,
+              <span class="text-rose-300">exit(code)</span>.
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (activeBottomTab === 'variables') {
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- High-Level Global Variables -->
+          <div>
+            <div class="text-[11px] font-semibold uppercase text-slate-400 mb-1.5">
+              Global Variables ({{ state?.globals?.length ?? 0 }})
+            </div>
+            @if ((state?.globals?.length ?? 0) === 0) {
+              <div class="text-slate-500 italic text-[11px]">
+                No high-level global variables declared.
+              </div>
+            }
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              @for (g of (state?.globals ?? []); track g.name) {
+                <div
+                  data-testid="global-var-item"
+                  class="p-1.5 rounded bg-slate-900 border border-slate-800 flex items-center justify-between text-[11px]"
+                >
+                  <div>
+                    <span class="text-emerald-300 font-semibold">{{ g.name }}</span>
+                    <span class="text-slate-500 ml-1">[{{ hex16(g.address) }}]</span>
+                  </div>
+                  <span class="text-slate-100 font-bold">
+                    {{ g.value }} <span class="text-slate-400 font-normal">({{ hex16(g.value) }})</span>
+                  </span>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Active Call Stack & Activation Frames -->
+          <div>
+            <div class="text-[11px] font-semibold uppercase text-slate-400 mb-1.5">
+              Call Stack &amp; Activation Frames ({{ state?.callStack?.length ?? 0 }})
+            </div>
+            @if ((state?.callStack?.length ?? 0) === 0) {
+              <div class="text-slate-500 italic text-[11px]">
+                Top-level _start scope (no active CALL frames on stack).
+              </div>
+            }
+            <div class="space-y-1.5">
+              @for (frame of (state?.callStack ?? []); track frame.depth) {
+                <div
+                  data-testid="call-frame-item"
+                  class="p-2 rounded bg-slate-900/90 border border-purple-800/50 text-[11px]"
+                >
+                  <div class="flex items-center justify-between">
+                    <span class="text-purple-300 font-bold">
+                      #{{ frame.depth }} {{ frame.function }}()
+                    </span>
+                    <span class="text-slate-400">
+                      FP={{ hex16(frame.frameFp) }} | Ret={{ hex16(frame.returnAddr) }}
+                      @if (frame.callerSourceLine) {
+                        <span>(Line {{ frame.callerSourceLine }})</span>
+                      }
+                    </span>
+                  </div>
+                  @if (frame.locals.length > 0) {
+                    <div class="mt-1 flex flex-wrap gap-1.5">
+                      @for (loc of frame.locals; track loc.name) {
+                        <span class="px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-200">
+                          <span class="text-amber-300">{{ loc.name }}</span>={{ loc.value }}
+                          <span class="text-slate-500">[FP+{{ loc.offset }}]</span>
+                        </span>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (activeBottomTab === 'trace') {
+        <div class="space-y-1">
+          @for (t of (state?.trace ?? []); track t.step) {
+            <div class="flex items-center gap-4 text-[11px] text-slate-300 border-b border-slate-800/40 pb-0.5">
+              <span class="text-slate-500 w-14">#{{ t.step }}</span>
+              <span class="text-sky-400 w-32">{{ hex16(t.pcBefore) }} → {{ hex16(t.pcAfter) }}</span>
+              <span class="text-emerald-300 flex-1">{{ t.mnemonic }}</span>
+              <span class="text-purple-300">SP:{{ hex16(t.spAfter) }}</span>
+              <span class="text-slate-400">{{ t.cycles }} cyc</span>
+            </div>
+          }
+        </div>
+      }
+
+      @if (activeBottomTab === 'microarch') {
+        <div class="flex flex-col gap-3 font-mono text-xs">
+          <!-- Summary Metrics Cards -->
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
+            <div class="p-2 rounded bg-slate-900 border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Instructions Executed</span>
+              <span class="text-sky-300 font-bold text-sm">{{ profilerStats.executed }}</span>
+            </div>
+            <div class="p-2 rounded bg-slate-900 border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Total Clock Cycles</span>
+              <span class="text-amber-300 font-bold text-sm">{{ profilerStats.cycles }}</span>
+            </div>
+            <div class="p-2 rounded bg-slate-900 border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Avg CPI (Cycles / Instr)</span>
+              <span class="text-emerald-400 font-bold text-sm">{{ profilerStats.cpi }}</span>
+            </div>
+            <div class="p-2 rounded bg-slate-900 border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">Memory Reads / Writes</span>
+              <span class="text-purple-300 font-bold text-sm">R:{{ profilerStats.memReads }} | W:{{ profilerStats.memWrites }}</span>
+            </div>
+            <div class="p-2 rounded bg-slate-900 border border-slate-800">
+              <span class="text-slate-400 block text-[10px]">L1 Cache Hit Rate</span>
+              <span class="text-cyan-300 font-bold text-sm">{{ profilerStats.hitRate }}% ({{ profilerStats.cacheHits }}/{{ profilerStats.cacheHits + profilerStats.cacheMisses }})</span>
+            </div>
+          </div>
+
+          <!-- Conceptual 5-Stage Classic RISC Pipeline Visualization -->
+          <div class="p-2.5 rounded bg-slate-900 border border-slate-800 space-y-1.5">
+            <div class="flex items-center justify-between text-[11px] text-slate-400">
+              <span class="font-semibold text-slate-300 uppercase tracking-wide">Conceptual 5-Stage Pipeline Model</span>
+              <span class="text-[10px] text-slate-500">Forge-16 Single-Cycle/Multi-Cycle Architecture Model</span>
+            </div>
+            <div class="grid grid-cols-5 gap-1.5 text-center text-[11px]">
+              <div class="p-1.5 rounded bg-sky-950/60 border border-sky-600/50 text-sky-300">
+                <div class="font-bold">IF: Fetch</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">PC: {{ hex16(state?.pc ?? 0) }}</div>
+              </div>
+              <div class="p-1.5 rounded bg-indigo-950/60 border border-indigo-600/50 text-indigo-300">
+                <div class="font-bold">ID: Decode</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">{{ currentInstruction?.text?.split(' ')?.[0] || 'NOP' }}</div>
+              </div>
+              <div class="p-1.5 rounded bg-amber-950/60 border border-amber-600/50 text-amber-300">
+                <div class="font-bold">EX: ALU</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">{{ aluOperationInspection ? aluOperationInspection.opName : 'Bypass' }}</div>
+              </div>
+              <div class="p-1.5 rounded bg-purple-950/60 border border-purple-600/50 text-purple-300">
+                <div class="font-bold">MEM: Access</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Last: {{ hex16(state?.memory?.lastRead || state?.memory?.lastWrite || 0) }}</div>
+              </div>
+              <div class="p-1.5 rounded bg-emerald-950/60 border border-emerald-600/50 text-emerald-300">
+                <div class="font-bold">WB: Writeback</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">R0–R7 Registers</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Instruction Mix Distribution -->
+          <div class="p-2 rounded bg-slate-900 border border-slate-800 text-[11px] flex flex-wrap items-center gap-4 text-slate-300">
+            <span class="text-slate-500">Instruction Mix:</span>
+            <span>Arithmetic: <strong class="text-amber-300">{{ profilerStats.arithCount }}</strong></span>
+            <span>Data Movement: <strong class="text-sky-300">{{ profilerStats.dataCount }}</strong></span>
+            <span>Control Flow: <strong class="text-purple-300">{{ profilerStats.branchCount }}</strong></span>
+            <span>Stack Operations: <strong class="text-emerald-300">{{ profilerStats.stackCount }}</strong></span>
+            <span>I/O Operations: <strong class="text-teal-300">{{ profilerStats.ioCount }}</strong></span>
+          </div>
+        </div>
+      }
+
+      @if (activeBottomTab === 'symbols') {
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          @for (s of (state?.symbols ?? []); track s.name) {
+            <div class="p-1.5 rounded bg-slate-900 border border-slate-800 flex items-center justify-between text-[11px]">
+              <span class="text-amber-300 font-semibold">{{ s.name }}</span>
+              <span class="text-slate-300">{{ hex16(s.value) }} ({{ s.isConstant ? 'CONST' : 'LABEL' }})</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </footer>
+
+  <!-- ==================== MODAL 1: INTERACTIVE TUTORIALS & GUIDED EXERCISES ==================== -->
+  @if (showTutorialsModal) {
+    <div
+      data-testid="tutorials-modal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto"
+    >
+      <div class="bg-[#0f1522] border border-slate-700 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+        <!-- Modal Header -->
+        <div class="px-5 py-3 bg-[#131b2e] border-b border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-base">📚</span>
+            <h2 class="text-sm font-semibold tracking-tight text-slate-100">
+              Interactive Tutorials &amp; Guided Exercises
+            </h2>
+          </div>
+          <button
+            type="button"
+            data-testid="close-tutorials-modal"
+            (click)="showTutorialsModal = false"
+            class="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-800 text-sm cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Mode Tabs: Tutorials vs Exercises -->
+        <div class="px-5 py-2 bg-[#0c121e] border-b border-slate-800 flex items-center gap-3 text-xs font-mono">
+          <button
+            type="button"
+            data-testid="tab-tut-lessons"
+            (click)="activeTutorialTab = 'tutorials'"
+            class="px-3 py-1.5 rounded cursor-pointer transition font-medium"
+            [class.bg-sky-600]="activeTutorialTab === 'tutorials'"
+            [class.text-white]="activeTutorialTab === 'tutorials'"
+            [class.text-slate-400]="activeTutorialTab !== 'tutorials'"
+          >
+            Interactive Lessons ({{ tutorialsList.length }})
+          </button>
+          <button
+            type="button"
+            data-testid="tab-tut-exercises"
+            (click)="activeTutorialTab = 'exercises'"
+            class="px-3 py-1.5 rounded cursor-pointer transition font-medium"
+            [class.bg-amber-600]="activeTutorialTab === 'exercises'"
+            [class.text-white]="activeTutorialTab === 'exercises'"
+            [class.text-slate-400]="activeTutorialTab !== 'exercises'"
+          >
+            Guided Exercises ({{ exercisesList.length }})
+          </button>
+        </div>
+
+        <!-- Modal Body Content -->
+        <div class="flex-1 overflow-y-auto p-5 grid grid-cols-1 md:grid-cols-12 gap-5 font-mono text-xs">
+          @if (activeTutorialTab === 'tutorials') {
+            <!-- Left List of Lessons -->
+            <div class="md:col-span-4 flex flex-col gap-2">
+              <span class="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Lessons Curriculum</span>
+              @for (tut of tutorialsList; track tut.id) {
+                <button
+                  type="button"
+                  [attr.data-testid]="'select-tut-' + tut.id"
+                  (click)="selectedTutorialId = tut.id"
+                  class="p-2.5 rounded text-left border transition cursor-pointer"
+                  [class.bg-sky-950/60]="selectedTutorialId === tut.id"
+                  [class.border-sky-500/60]="selectedTutorialId === tut.id"
+                  [class.text-sky-200]="selectedTutorialId === tut.id"
+                  [class.bg-slate-900]="selectedTutorialId !== tut.id"
+                  [class.border-slate-800]="selectedTutorialId !== tut.id"
+                  [class.text-slate-300]="selectedTutorialId !== tut.id"
+                >
+                  <div class="text-[10px] text-sky-400 font-semibold mb-0.5">{{ tut.badge }}</div>
+                  <div class="font-bold text-xs text-slate-100">{{ tut.title }}</div>
+                  <div class="text-[10px] text-slate-400 mt-1 line-clamp-2">{{ tut.summary }}</div>
+                </button>
+              }
+            </div>
+
+            <!-- Right Lesson Detail -->
+            <div class="md:col-span-8 flex flex-col gap-4">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <div>
+                  <h3 class="text-sm font-bold text-slate-100">{{ currentTutorial.title }}</h3>
+                  <span class="text-[11px] text-sky-400">{{ currentTutorial.badge }} • {{ currentTutorial.language.toUpperCase() }}</span>
+                </div>
+                <button
+                  type="button"
+                  data-testid="btn-load-tutorial"
+                  (click)="loadTutorial(currentTutorial)"
+                  class="px-3 py-1.5 rounded bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs transition cursor-pointer shadow"
+                >
+                  Load into Editor ➔
+                </button>
+              </div>
+
+              <div>
+                <span class="text-amber-400 font-semibold uppercase tracking-wide text-[11px] block mb-1">Architecture Concept</span>
+                <p class="text-slate-300 leading-5 whitespace-pre-line bg-slate-900/80 p-3 rounded border border-slate-800">
+                  {{ currentTutorial.theory }}
+                </p>
+              </div>
+
+              <div>
+                <span class="text-emerald-400 font-semibold uppercase tracking-wide text-[11px] block mb-1">Guided Walkthrough Steps</span>
+                <ol class="list-decimal list-inside space-y-1.5 text-slate-300 bg-slate-900/80 p-3 rounded border border-slate-800 leading-5">
+                  @for (step of currentTutorial.walkthrough; track $index) {
+                    <li>{{ step }}</li>
+                  }
+                </ol>
+              </div>
+
+              <div>
+                <span class="text-slate-400 font-semibold uppercase tracking-wide text-[11px] block mb-1">Sample Program Code</span>
+                <pre class="p-3 rounded bg-black/60 border border-slate-800 text-slate-200 overflow-x-auto text-[11px] leading-5">{{ currentTutorial.sampleCode }}</pre>
+              </div>
+            </div>
+          }
+
+          @if (activeTutorialTab === 'exercises') {
+            <!-- Left List of Exercises -->
+            <div class="md:col-span-4 flex flex-col gap-2">
+              <span class="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Hands-on Exercises</span>
+              @for (ex of exercisesList; track ex.id) {
+                <button
+                  type="button"
+                  [attr.data-testid]="'select-ex-' + ex.id"
+                  (click)="selectedExerciseId = ex.id; showExerciseSolution = false"
+                  class="p-2.5 rounded text-left border transition cursor-pointer"
+                  [class.bg-amber-950/60]="selectedExerciseId === ex.id"
+                  [class.border-amber-500/60]="selectedExerciseId === ex.id"
+                  [class.text-amber-200]="selectedExerciseId === ex.id"
+                  [class.bg-slate-900]="selectedExerciseId !== ex.id"
+                  [class.border-slate-800]="selectedExerciseId !== ex.id"
+                  [class.text-slate-300]="selectedExerciseId !== ex.id"
+                >
+                  <div class="flex items-center justify-between text-[10px] mb-0.5">
+                    <span class="text-amber-400 font-semibold">{{ ex.category }}</span>
+                    <span class="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">{{ ex.difficulty }}</span>
+                  </div>
+                  <div class="font-bold text-xs text-slate-100">{{ ex.title }}</div>
+                </button>
+              }
+            </div>
+
+            <!-- Right Exercise Detail -->
+            <div class="md:col-span-8 flex flex-col gap-4">
+              <div class="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2 gap-2">
+                <div>
+                  <h3 class="text-sm font-bold text-slate-100">{{ currentExercise.title }}</h3>
+                  <span class="text-[11px] text-amber-400">{{ currentExercise.difficulty }} • {{ currentExercise.category }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    data-testid="btn-load-exercise-starter"
+                    (click)="loadExerciseStarter(currentExercise)"
+                    class="px-3 py-1.5 rounded bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs transition cursor-pointer"
+                  >
+                    Load Starter Code
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="btn-load-exercise-solution"
+                    (click)="loadExerciseSolution(currentExercise)"
+                    class="px-3 py-1.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white font-medium text-xs transition cursor-pointer"
+                  >
+                    Load Solution
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <span class="text-amber-400 font-semibold uppercase tracking-wide text-[11px] block mb-1">Objective</span>
+                <p class="text-slate-300 leading-5 bg-slate-900/80 p-3 rounded border border-slate-800">
+                  {{ currentExercise.objective }}
+                </p>
+              </div>
+
+              <div>
+                <span class="text-sky-400 font-semibold uppercase tracking-wide text-[11px] block mb-1">Instructions</span>
+                <ol class="list-decimal list-inside space-y-1 text-slate-300 bg-slate-900/80 p-3 rounded border border-slate-800 leading-5">
+                  @for (inst of currentExercise.instructions; track $index) {
+                    <li>{{ inst }}</li>
+                  }
+                </ol>
+              </div>
+
+              <div>
+                <span class="text-purple-400 font-semibold uppercase tracking-wide text-[11px] block mb-1">Hints &amp; Guidelines</span>
+                <ul class="list-disc list-inside space-y-1 text-slate-400 bg-slate-900/80 p-3 rounded border border-slate-800 text-[11px]">
+                  @for (h of currentExercise.hints; track $index) {
+                    <li>{{ h }}</li>
+                  }
+                </ul>
+              </div>
+
+              <div class="p-3 rounded bg-slate-900 border border-slate-800 text-[11px]">
+                <span class="text-emerald-400 font-semibold">Verification Criteria:</span>
+                <span class="text-slate-300 ml-2">{{ currentExercise.expectedOutputSummary }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ==================== MODAL 2: CPU ARCHITECTURE BLOCK DIAGRAM ==================== -->
+  @if (showDiagramModal) {
+    <div
+      data-testid="diagram-modal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto"
+    >
+      <div class="bg-[#0f1522] border border-slate-700 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="px-5 py-3 bg-[#131b2e] border-b border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-base">📐</span>
+            <h2 class="text-sm font-semibold tracking-tight text-slate-100">
+              Forge-16 CPU Architecture &amp; Data Path Diagram
+            </h2>
+          </div>
+          <button
+            type="button"
+            data-testid="close-diagram-modal"
+            (click)="showDiagramModal = false"
+            class="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-800 text-sm cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="p-5 overflow-auto flex flex-col gap-4 font-mono text-xs">
+          <!-- Architecture SVG Block Diagram -->
+          <div class="w-full bg-[#0b0f17] border border-slate-800 rounded p-4">
+            <svg viewBox="0 0 800 480" class="w-full h-auto text-xs" font-family="monospace">
+              <!-- Background Grid -->
+              <rect width="800" height="480" fill="#0b0f17" rx="8" />
+
+              <!-- Main Bus: Address Bus (Cyan) -->
+              <rect x="50" y="220" width="700" height="12" fill="#0891b2" rx="3" />
+              <text x="60" y="212" fill="#22d3ee" font-size="11" font-weight="bold">16-Bit Address Bus (0x0000–0xFFFF)</text>
+
+              <!-- Main Bus: Data Bus (Emerald) -->
+              <rect x="50" y="260" width="700" height="12" fill="#059669" rx="3" />
+              <text x="60" y="288" fill="#34d399" font-size="11" font-weight="bold">16-Bit Data Bus (Bidirectional)</text>
+
+              <!-- Control Unit Block -->
+              <rect x="60" y="30" width="200" height="150" fill="#1e1b4b" stroke="#6366f1" stroke-width="2" rx="6" />
+              <text x="80" y="55" fill="#a5b4fc" font-size="12" font-weight="bold">Control Unit &amp; Decoder</text>
+              <text x="80" y="75" fill="#94a3b8" font-size="10">State: Fetch ➔ Decode ➔ Execute</text>
+              <rect x="80" y="85" width="160" height="40" fill="#0f172a" stroke="#475569" rx="4" />
+              <text x="90" y="105" fill="#e2e8f0" font-size="10">IR: {{ activeInstructionBreakdown?.fullHex || '0x00000000' }}</text>
+              <text x="90" y="118" fill="#38bdf8" font-size="9">{{ currentInstruction?.text || 'NOP' }}</text>
+              <text x="80" y="145" fill="#cbd5e1" font-size="10">PC: {{ hex16(state?.pc ?? 0) }}</text>
+              <text x="80" y="162" fill="#c084fc" font-size="10">SP: {{ hex16(state?.sp ?? 61438) }}</text>
+
+              <!-- Register File (R0-R7) -->
+              <rect x="300" y="30" width="220" height="150" fill="#0f291e" stroke="#10b981" stroke-width="2" rx="6" />
+              <text x="320" y="55" fill="#6ee7b7" font-size="12" font-weight="bold">Register File (R0–R7)</text>
+              <text x="320" y="72" fill="#94a3b8" font-size="9">Eight 16-Bit General Registers</text>
+              <g font-size="10" fill="#f1f5f9">
+                <text x="320" y="95">R0: {{ hex16(state?.registers?.[0] ?? 0) }}</text>
+                <text x="420" y="95">R1: {{ hex16(state?.registers?.[1] ?? 0) }}</text>
+                <text x="320" y="115">R2: {{ hex16(state?.registers?.[2] ?? 0) }}</text>
+                <text x="420" y="115">R3: {{ hex16(state?.registers?.[3] ?? 0) }}</text>
+                <text x="320" y="135">R4: {{ hex16(state?.registers?.[4] ?? 0) }}</text>
+                <text x="420" y="135">R5: {{ hex16(state?.registers?.[5] ?? 0) }}</text>
+                <text x="320" y="155">R6: {{ hex16(state?.registers?.[6] ?? 0) }}</text>
+                <text x="420" y="155">R7(FP): {{ hex16(state?.registers?.[7] ?? 0) }}</text>
+              </g>
+
+              <!-- ALU & Status Flags -->
+              <rect x="560" y="30" width="180" height="150" fill="#451a03" stroke="#f59e0b" stroke-width="2" rx="6" />
+              <text x="580" y="55" fill="#fcd34d" font-size="12" font-weight="bold">Arithmetic Logic Unit</text>
+              <text x="580" y="75" fill="#94a3b8" font-size="10">Active: {{ aluOperationInspection?.opName || 'IDLE' }}</text>
+              <rect x="580" y="90" width="140" height="35" fill="#1c1917" stroke="#78716c" rx="4" />
+              <text x="590" y="107" fill="#fde047" font-size="10">Result: {{ aluOperationInspection?.resultHex || '---' }}</text>
+              <text x="590" y="119" fill="#a8a29e" font-size="9">Op: {{ aluOperationInspection?.rdName || 'Rd' }} &amp; {{ aluOperationInspection?.rsOrImmName || 'Src' }}</text>
+              <!-- Flags Indicator -->
+              <rect x="580" y="135" width="140" height="30" fill="#292524" rx="4" />
+              <text x="590" y="154" fill="#a7f3d0" font-size="11">
+                Z:{{ state?.flagZ ? 1 : 0 }} N:{{ state?.flagN ? 1 : 0 }} C:{{ state?.flagC ? 1 : 0 }} V:{{ state?.flagV ? 1 : 0 }}
+              </text>
+
+              <!-- Lower Memory Subsystem (RAM / Heap / Stack / VRAM) -->
+              <rect x="60" y="310" width="460" height="140" fill="#1e293b" stroke="#475569" stroke-width="2" rx="6" />
+              <text x="80" y="335" fill="#94a3b8" font-size="12" font-weight="bold">Memory Subsystem (64 KB Address Space)</text>
+              <g font-size="10">
+                <rect x="80" y="350" width="90" height="80" fill="#0f172a" stroke="#334155" rx="4" />
+                <text x="90" y="375" fill="#38bdf8" font-weight="bold">Code/Data</text>
+                <text x="90" y="395" fill="#94a3b8">0x0000–</text>
+                <text x="90" y="410" fill="#94a3b8">0x8FFF</text>
+
+                <rect x="185" y="350" width="90" height="80" fill="#0f172a" stroke="#334155" rx="4" />
+                <text x="195" y="375" fill="#f59e0b" font-weight="bold">OS Heap</text>
+                <text x="195" y="395" fill="#94a3b8">0x9000–</text>
+                <text x="195" y="410" fill="#94a3b8">0xDFFF</text>
+
+                <rect x="290" y="350" width="90" height="80" fill="#0f172a" stroke="#334155" rx="4" />
+                <text x="300" y="375" fill="#c084fc" font-weight="bold">Call Stack</text>
+                <text x="300" y="395" fill="#94a3b8">0xE000–</text>
+                <text x="300" y="410" fill="#94a3b8">0xEFFF</text>
+
+                <rect x="395" y="350" width="105" height="80" fill="#0f172a" stroke="#334155" rx="4" />
+                <text x="405" y="375" fill="#22d3ee" font-weight="bold">Framebuffer</text>
+                <text x="405" y="395" fill="#94a3b8">0xF000–</text>
+                <text x="405" y="410" fill="#94a3b8">0xF7FF</text>
+              </g>
+
+              <!-- I/O Controller & System Calls -->
+              <rect x="560" y="310" width="180" height="140" fill="#132e29" stroke="#0d9488" stroke-width="2" rx="6" />
+              <text x="580" y="335" fill="#5eead4" font-size="12" font-weight="bold">I/O Controller &amp; OS</text>
+              <g font-size="10" fill="#cbd5e1">
+                <text x="580" y="360">Port 0: ASCII Console</text>
+                <text x="580" y="380">Port 1: Integer Output</text>
+                <text x="580" y="400">Port 2: Status / Debug</text>
+                <text x="580" y="420" fill="#fde047" font-weight="bold">Port 3: OS Syscall Trap</text>
+              </g>
+            </svg>
+          </div>
+
+          <div class="p-3 rounded bg-slate-900 border border-slate-800 text-[11px] text-slate-300 leading-5">
+            <strong class="text-sky-300">Data Path Summary:</strong>
+            The Forge-16 employs a unified synchronous architecture where instructions and data share a 64 KB flat address space.
+            The Control Unit fetches 32-bit instructions (two 16-bit words) from PC, decodes the 6-bit opcode, routes operands from R0–R7 to the ALU, executes the operation, and optionally engages the 16-bit Memory Bus for LOAD/STORE or the I/O bus for system calls.
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ==================== MODAL 3: INSTRUCTION SET REFERENCE (ISA) ==================== -->
+  @if (showIsaModal) {
+    <div
+      data-testid="isa-modal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto"
+    >
+      <div class="bg-[#0f1522] border border-slate-700 rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="px-5 py-3 bg-[#131b2e] border-b border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-base">📋</span>
+            <h2 class="text-sm font-semibold tracking-tight text-slate-100">
+              Forge-16 Complete Instruction Set Reference (32 Instructions)
+            </h2>
+          </div>
+          <button
+            type="button"
+            data-testid="close-isa-modal"
+            (click)="showIsaModal = false"
+            class="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-800 text-sm cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="px-5 py-2.5 bg-[#0c121e] border-b border-slate-800 flex items-center justify-between gap-3 text-xs font-mono">
+          <input
+            type="text"
+            data-testid="input-isa-search"
+            [(ngModel)]="isaSearchText"
+            placeholder="Search by mnemonic, opcode, category, syntax..."
+            class="w-full max-w-md px-3 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200 placeholder-slate-500"
+          />
+          <span class="text-slate-400 text-[11px]">
+            Showing {{ filteredIsa.length }} of {{ isaTable.length }} instructions
+          </span>
+        </div>
+
+        <div class="flex-1 overflow-auto p-5 font-mono text-xs">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-700 text-[11px] text-slate-400 uppercase">
+                <th class="py-2 px-2">Op</th>
+                <th class="py-2 px-2">Mnemonic</th>
+                <th class="py-2 px-2">Category</th>
+                <th class="py-2 px-3">Syntax</th>
+                <th class="py-2 px-2">Modes</th>
+                <th class="py-2 px-2">Cycles</th>
+                <th class="py-2 px-2">Flags</th>
+                <th class="py-2 px-3">Description</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60 text-[11px]">
+              @for (item of filteredIsa; track item.opcodeHex) {
+                <tr class="hover:bg-slate-800/40">
+                  <td class="py-1.5 px-2 text-sky-400 font-bold">{{ item.opcodeHex }}</td>
+                  <td class="py-1.5 px-2 text-emerald-300 font-bold">{{ item.mnemonic }}</td>
+                  <td class="py-1.5 px-2 text-slate-400">{{ item.category }}</td>
+                  <td class="py-1.5 px-3 text-amber-300">{{ item.syntax }}</td>
+                  <td class="py-1.5 px-2 text-cyan-300">{{ item.allowedModes }}</td>
+                  <td class="py-1.5 px-2 text-slate-300">{{ item.cycles }}</td>
+                  <td class="py-1.5 px-2 text-purple-300">{{ item.flags }}</td>
+                  <td class="py-1.5 px-3 text-slate-300">{{ item.description }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ==================== MODAL 4: PERFORMANCE & PROFILER MODAL ==================== -->
+  @if (showProfilerModal) {
+    <div
+      data-testid="profiler-modal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto"
+    >
+      <div class="bg-[#0f1522] border border-slate-700 rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="px-5 py-3 bg-[#131b2e] border-b border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-base">⚡</span>
+            <h2 class="text-sm font-semibold tracking-tight text-slate-100">
+              Execution Performance &amp; Microarchitecture Profiler
+            </h2>
+          </div>
+          <button
+            type="button"
+            data-testid="close-profiler-modal"
+            (click)="showProfilerModal = false"
+            class="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-800 text-sm cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="p-5 overflow-auto flex flex-col gap-4 font-mono text-xs">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px]">
+            <div class="p-3 rounded bg-slate-900 border border-slate-800">
+              <span class="text-slate-400 block">Total Instructions</span>
+              <span class="text-sky-300 font-bold text-lg mt-1 block">{{ profilerStats.executed }}</span>
+            </div>
+            <div class="p-3 rounded bg-slate-900 border border-slate-800">
+              <span class="text-slate-400 block">Total Cycles</span>
+              <span class="text-amber-300 font-bold text-lg mt-1 block">{{ profilerStats.cycles }}</span>
+            </div>
+            <div class="p-3 rounded bg-slate-900 border border-slate-800">
+              <span class="text-slate-400 block">Average CPI</span>
+              <span class="text-emerald-400 font-bold text-lg mt-1 block">{{ profilerStats.cpi }}</span>
+            </div>
+            <div class="p-3 rounded bg-slate-900 border border-slate-800">
+              <span class="text-slate-400 block">L1 Cache Hit Rate</span>
+              <span class="text-cyan-300 font-bold text-lg mt-1 block">{{ profilerStats.hitRate }}%</span>
+            </div>
+          </div>
+
+          <div class="p-3 rounded bg-slate-900 border border-slate-800 space-y-2">
+            <span class="text-slate-300 font-semibold uppercase text-[11px] block">Instruction Category Distribution</span>
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
+              <div class="p-2 rounded bg-slate-950 border border-slate-800">
+                <span class="text-slate-500">Arithmetic:</span>
+                <span class="text-amber-300 font-bold ml-1">{{ profilerStats.arithCount }}</span>
+              </div>
+              <div class="p-2 rounded bg-slate-950 border border-slate-800">
+                <span class="text-slate-500">Data Move:</span>
+                <span class="text-sky-300 font-bold ml-1">{{ profilerStats.dataCount }}</span>
+              </div>
+              <div class="p-2 rounded bg-slate-950 border border-slate-800">
+                <span class="text-slate-500">Branches:</span>
+                <span class="text-purple-300 font-bold ml-1">{{ profilerStats.branchCount }}</span>
+              </div>
+              <div class="p-2 rounded bg-slate-950 border border-slate-800">
+                <span class="text-slate-500">Stack:</span>
+                <span class="text-emerald-300 font-bold ml-1">{{ profilerStats.stackCount }}</span>
+              </div>
+              <div class="p-2 rounded bg-slate-950 border border-slate-800">
+                <span class="text-slate-500">I/O Calls:</span>
+                <span class="text-teal-300 font-bold ml-1">{{ profilerStats.ioCount }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 rounded bg-slate-900 border border-slate-800 text-[11px] text-slate-300 leading-5">
+            <span class="text-emerald-400 font-semibold block mb-1">Microarchitecture Insights:</span>
+            Forge-16 instructions take between 1 and 4 cycles depending on memory and ALU complexity.
+            Single-cycle instructions include arithmetic (ADD, SUB, AND, OR, XOR), bitwise operations, shifts, and register moves.
+            Memory operations (LOAD, STORE, PUSH, POP, JMP) take 2 cycles. Multiplications take 3 cycles, and divisions take 4 cycles.
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>

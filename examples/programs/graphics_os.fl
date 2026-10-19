@@ -1,0 +1,48 @@
+// ForgeOS Graphics, Dynamic Heap & Syscall Demo (graphics_os.fl)
+// Demonstrates:
+//   - Dynamic heap allocation via alloc(bytes)
+//   - Direct memory access via poke(addr, val) & peek(addr)
+//   - 64x32 Virtual Framebuffer drawing via clear_screen() & draw_pixel()
+//   - System timer / cycle inspection via cycles()
+//   - Clean program termination via exit(code)
+
+fn draw_bar(x_start, width, height, color) {
+    for (let x = x_start; x < x_start + width; x = x + 1) {
+        for (let y = 30 - height; y < 30; y = y + 1) {
+            draw_pixel(x, y, color)
+        }
+    }
+    return height
+}
+
+// 1. Clear 64x32 framebuffer to dark background (0)
+clear_screen(0)
+
+// 2. Allocate a 5-element 16-bit array (10 bytes) on the ForgeOS heap (0x9000+)
+let bar_heights = alloc(10)
+poke(bar_heights + 0, 8)
+poke(bar_heights + 2, 14)
+poke(bar_heights + 4, 20)
+poke(bar_heights + 6, 26)
+poke(bar_heights + 8, 18)
+
+// 3. Draw baseline across bottom of display (y = 30, color = 15 White)
+for (let bx = 2; bx < 62; bx = bx + 1) {
+    draw_pixel(bx, 30, 15)
+}
+
+// 4. Render each bar from the heap-allocated array onto the 64x32 display
+let sum = 0
+for (let i = 0; i < 5; i = i + 1) {
+    let h = peek(bar_heights + i * 2)
+    sum = sum + h
+    let x0 = 6 + i * 11
+    let col = 9 + i // Bright palette colors 9..13
+    draw_bar(x0, 7, h, col)
+}
+
+print sum
+let elapsed = cycles()
+print elapsed
+exit(0)
+

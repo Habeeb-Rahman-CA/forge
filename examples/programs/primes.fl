@@ -1,0 +1,29 @@
+// Project Forge — Prime Number Sieve & Function Demo (primes.fl)
+// Exercises functions, for-loops, while-loops, break, continue, modulo (%), and logical &&
+
+fn is_prime(n) {
+    if n < 2 {
+        return 0
+    }
+    let d = 2
+    while d * d <= n {
+        if (n % d) == 0 {
+            return 0
+        }
+        d = d + 1
+    }
+    return 1
+}
+
+let count = 0
+for (let candidate = 2; candidate <= 30; candidate = candidate + 1) {
+    if !is_prime(candidate) {
+        continue
+    }
+    print candidate
+    count = count + 1
+    if count >= 6 {
+        break
+    }
+}
+

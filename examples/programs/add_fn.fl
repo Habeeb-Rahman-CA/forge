@@ -1,0 +1,11 @@
+// Example 1: Specification Example (Variables, Function, and Print)
+let a = 10
+let b = 5
+
+fn add(x, y) {
+    return x + y
+}
+
+let result = add(a, b)
+print result
+

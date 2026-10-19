@@ -1,0 +1,37 @@
+{
+  "name": "forge-ui",
+  "version": "0.3.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "HOME=/tmp ng build --configuration development",
+    "build:prod": "HOME=/tmp ng build --configuration production",
+    "watch": "HOME=/tmp ng build --watch --configuration development",
+    "test": "HOME=/tmp ng test --watch=false"
+  },
+  "private": true,
+  "packageManager": "npm@11.11.0",
+  "dependencies": {
+    "@angular/common": "^21.2.0",
+    "@angular/compiler": "^21.2.0",
+    "@angular/core": "^21.2.0",
+    "@angular/forms": "^21.2.0",
+    "@angular/platform-browser": "^21.2.0",
+    "@angular/router": "^21.2.0",
+    "monaco-editor": "^0.52.2",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^21.2.22",
+    "@angular/cli": "^21.2.22",
+    "@angular/compiler-cli": "^21.2.0",
+    "@tailwindcss/postcss": "^4.1.0",
+    "jsdom": "^28.0.0",
+    "postcss": "^8.5.3",
+    "prettier": "^3.8.1",
+    "tailwindcss": "^4.1.0",
+    "typescript": "~5.9.2",
+    "vitest": "^4.0.8"
+  }
+}
